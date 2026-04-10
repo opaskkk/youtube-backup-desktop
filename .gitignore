@@ -1,0 +1,5 @@
+node_modules/
+dist/
+out/
+vendor/win32/
+*.log

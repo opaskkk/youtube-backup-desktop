@@ -1,0 +1,59 @@
+{
+  "name": "youtube-backup-desktop",
+  "version": "0.1.0",
+  "description": "Windows desktop app for backing up YouTube videos at the highest available quality.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "test": "node --test",
+    "download:bin": "node scripts/download-binaries.js",
+    "prepare": "husky",
+    "postinstall": "node scripts/download-binaries.js",
+    "release": "standard-version",
+    "dist": "electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "com.vibecoding.youtubebackup",
+    "productName": "YouTube Backup Desktop",
+    "files": [
+      "src/**/*",
+      "scripts/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "vendor/win32",
+        "to": "vendor/win32",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": false,
+      "runAfterFinish": false,
+      "include": "build/installer.nsh"
+    }
+  },
+  "keywords": [
+    "electron",
+    "youtube",
+    "backup",
+    "yt-dlp"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@commitlint/cli": "^20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12",
+    "husky": "^9.1.7",
+    "standard-version": "^9.5.0"
+  }
+}

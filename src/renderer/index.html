@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-i18n="documentTitle">YouTube Backup Desktop</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="hero">
+        <p class="eyebrow" data-i18n="heroEyebrow">Windows Backup Utility</p>
+        <h1 data-i18n="heroTitle">Paste a video link and save the best version YouTube will still serve.</h1>
+        <p class="lede" data-i18n="heroLede">
+          Choose a destination folder, queue the link, and the app will pull the best
+          available video and audio streams into a clean backup folder.
+        </p>
+
+        <div class="hero-card">
+          <h2 data-i18n="heroCardTitle">How it works</h2>
+          <ul>
+            <li data-i18n="heroPoint1">Paste a link you can already open in your browser</li>
+            <li data-i18n="heroPoint2">Save the best available video and audio combination</li>
+            <li data-i18n="heroPoint3">Keep metadata, thumbnails, and subtitles when you want them</li>
+          </ul>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="section-kicker" data-i18n="createKicker">Create backup job</p>
+              <h2 data-i18n="createTitle">New video backup</h2>
+            </div>
+            <label class="field language-field">
+              <span data-i18n="languageLabel">Language</span>
+              <select id="language" name="language">
+                <option value="ko">한국어</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+          </div>
+
+          <form id="job-form" class="form-grid">
+            <label class="field field-wide">
+              <span data-i18n="urlLabel">YouTube video URL</span>
+              <input id="url" name="url" type="url" placeholder="https://www.youtube.com/watch?v=..." data-i18n-placeholder="urlPlaceholder" required />
+            </label>
+
+            <label class="field field-wide">
+              <span data-i18n="customTitleLabel">Save as title</span>
+              <input
+                id="customTitle"
+                name="customTitle"
+                type="text"
+                placeholder="Leave blank to use the original YouTube title"
+                data-i18n-placeholder="customTitlePlaceholder"
+              />
+            </label>
+
+            <label class="field field-wide">
+              <span data-i18n="outputDirLabel">Output folder</span>
+              <div class="directory-picker">
+                <input id="outputDir" name="outputDir" type="text" readonly />
+                <button id="pickDir" type="button" class="secondary" data-i18n="browseButton">Browse</button>
+                <button id="openDir" type="button" class="secondary" data-i18n="openFolderButton">Open folder</button>
+              </div>
+            </label>
+
+            <details class="advanced field-wide">
+              <summary data-i18n="advancedSummary">Advanced options</summary>
+              <div class="advanced-grid">
+                <label class="check">
+                  <input id="allowMkvFallback" name="allowMkvFallback" type="checkbox" checked />
+                  <span data-i18n="allowMkvFallbackLabel">Allow MKV fallback to preserve quality</span>
+                </label>
+
+                <label class="field encoding-field">
+                  <span data-i18n="encodingModeLabel">Encoding mode</span>
+                  <select id="encodingMode" name="encodingMode">
+                    <option value="cpu_quality" data-i18n="encodingModeCpuQuality">CPU high quality</option>
+                    <option value="gpu_fast" data-i18n="encodingModeGpuFast">GPU fast</option>
+                    <option value="gpu_quality" data-i18n="encodingModeGpuQuality">GPU high quality</option>
+                  </select>
+                  <small class="field-hint" data-i18n="encodingModeHint">Used only when MP4 re-encoding is needed.</small>
+                </label>
+
+                <label class="check">
+                  <input id="writeMetadata" name="writeMetadata" type="checkbox" />
+                  <span data-i18n="writeMetadataLabel">Save metadata JSON</span>
+                </label>
+
+                <label class="check">
+                  <input id="writeThumbnail" name="writeThumbnail" type="checkbox" />
+                  <span data-i18n="writeThumbnailLabel">Save thumbnail</span>
+                </label>
+
+                <label class="check">
+                  <input id="writeSubs" name="writeSubs" type="checkbox" />
+                  <span data-i18n="writeSubsLabel">Save subtitles if available</span>
+                </label>
+              </div>
+            </details>
+
+            <div class="actions field-wide">
+              <button type="submit" class="primary" data-i18n="queueButton">Queue backup</button>
+              <p id="form-message" class="form-message"></p>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="section-kicker" data-i18n="queueKicker">Queue</p>
+              <h2 data-i18n="jobsTitle">Backup jobs</h2>
+            </div>
+          </div>
+
+          <div id="empty-state" class="empty-state" data-i18n="emptyState">
+            No jobs yet. Queue a link to start building your backup archive.
+          </div>
+
+          <div id="jobs" class="jobs"></div>
+        </section>
+      </main>
+    </div>
+
+    <template id="job-template">
+      <article class="job-card">
+        <header class="job-header">
+          <div>
+            <p class="job-status"></p>
+            <h3 class="job-title"></h3>
+          </div>
+          <div class="job-header-actions"></div>
+        </header>
+        <div class="progress-shell">
+          <div class="progress-bar"></div>
+        </div>
+        <p class="job-progress-note"></p>
+        <dl class="job-meta"></dl>
+        <ul class="warnings"></ul>
+        <pre class="job-log"></pre>
+      </article>
+    </template>
+
+    <script src="./renderer.js"></script>
+  </body>
+</html>
