@@ -1,0 +1,63 @@
+#!/bin/sh
+
+MSG_FILE="$1"
+HOOK_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+
+if [ -z "$MSG_FILE" ] || [ ! -f "$MSG_FILE" ]; then
+  exit 0
+fi
+
+SUBJECT="$(grep -Ev '^[[:space:]]*#' "$MSG_FILE" | sed -n '/[^[:space:]]/ {s/^[[:space:]]*//; p; q;}')"
+
+if [ -z "$SUBJECT" ]; then
+  sh "$HOOK_DIR/prepare-commit-msg" "$MSG_FILE" "message"
+  SUBJECT="$(grep -Ev '^[[:space:]]*#' "$MSG_FILE" | sed -n '/[^[:space:]]/ {s/^[[:space:]]*//; p; q;}')"
+fi
+
+ACTIONS_PATTERN='^(Add|Update|Fix|Refactor|Remove|Improve|Set|Implement|Create|Enforce|Restore|Align|Apply|Adjust|Sync|Unify|Rename|Move|Bump|Upgrade|Downgrade|Optimize|Optimise|Simplify|Document|Clean|Support|Enable|Disable|Resolve|Patch|Hotfix|Change)([[:space:]]|$)'
+SPECIAL_SKIP_PATTERN='^(Merge|Revert|WIP)([[:space:]]|$)|^(fixup!|squash!|amend!)([[:space:]]|$)'
+ISSUE_ONLY_PATTERN='^(#[0-9]+|[A-Z][A-Z0-9]+-[0-9]+)([[:space:]]|$)'
+CONVENTIONAL_PATTERN='^(feat|fix|chore|docs|refactor|test|build|ci|perf|style)(\(.+\))?:'
+AUTO_PATTERN='^작업:[[:space:]]'
+GENERAL_IMPERATIVE_PATTERN='^[A-Z][a-z]+([[:space:]]+[A-Za-z0-9][^[:cntrl:]]*)+$'
+
+run_commitlint() {
+  if [ "${COMMITLINT_SKIP:-0}" = "1" ]; then
+    return 0
+  fi
+
+  npx --no -- commitlint --edit "$MSG_FILE"
+}
+
+if printf "%s" "$SUBJECT" | grep -Eq "$SPECIAL_SKIP_PATTERN"; then
+  exit 0
+fi
+
+if printf "%s" "$SUBJECT" | grep -Eq "$ISSUE_ONLY_PATTERN"; then
+  exit 0
+fi
+
+if printf "%s" "$SUBJECT" | grep -q '[가-힣]'; then
+  exit 0
+fi
+
+if printf "%s" "$SUBJECT" | grep -Eq "$AUTO_PATTERN"; then
+  run_commitlint
+  exit $?
+fi
+
+if printf "%s" "$SUBJECT" | grep -Eiq "$CONVENTIONAL_PATTERN"; then
+  run_commitlint
+  exit $?
+fi
+
+if (
+  printf "%s" "$SUBJECT" | grep -Eiq "$ACTIONS_PATTERN" ||
+  printf "%s" "$SUBJECT" | grep -Eq "$GENERAL_IMPERATIVE_PATTERN"
+); then
+  sh "$HOOK_DIR/prepare-commit-msg" "$MSG_FILE" "message" "1"
+  run_commitlint
+  exit $?
+fi
+
+run_commitlint

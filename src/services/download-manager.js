@@ -1,8 +1,8 @@
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { createArchivePath, makeJobId } = require('./job-utils');
-const { createYtDlpRunner } = require('./yt-dlp-service');
-const { formatDuration } = require('./yt-dlp-service');
+const { createYtDlpRunner } = require('./yt-dlp-runner');
+const { formatDuration } = require('./progress-parser');
 
 class DownloadManager {
   constructor({ app, onUpdate }) {

@@ -1,0 +1,2 @@
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+sh "$SCRIPT_DIR/../.githooks/prepare-commit-msg" "$1" "$2" "$3"
