@@ -1,5 +1,5 @@
 const path = require('node:path');
-const { app, BrowserWindow, Menu, dialog, ipcMain, screen, shell } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, screen, shell } = require('electron');
 const { DownloadManager } = require('./services/download-manager');
 const { ensureBundledBinaries } = require('./services/binary-manager');
 const { loadSettings, normalizeLanguage, saveSettings, saveSettingsSync } = require('./services/settings-store');
@@ -16,6 +16,9 @@ function getFolderDialogTitle(language) {
 
 function buildLocalizedMenu(language) {
   const locale = normalizeLanguage(language);
+  const version = app.getVersion();
+  const repositoryUrl = 'https://github.com/opaskkk/youtube-backup-desktop';
+  const releasesUrl = `${repositoryUrl}/releases`;
 
   const labels = locale === 'ko'
     ? {
@@ -28,19 +31,10 @@ function buildLocalizedMenu(language) {
         copy: '복사',
         paste: '붙여넣기',
         selectAll: '전체 선택',
-        view: '보기',
-        reload: '새로 고침',
-        forceReload: '강제 새로 고침',
-        toggleDevTools: '개발자 도구',
-        resetZoom: '실제 크기',
-        zoomIn: '확대',
-        zoomOut: '축소',
-        toggleFullScreen: '전체 화면',
-        window: '창',
-        minimize: '최소화',
-        zoom: '확대/축소',
         help: '도움말',
-        about: 'YouTube Backup Desktop 정보'
+        openRepository: 'GitHub 저장소 열기',
+        openReleases: '최신 릴리스 보기',
+        version: `버전 ${version}`
       }
     : {
         file: 'File',
@@ -52,19 +46,10 @@ function buildLocalizedMenu(language) {
         copy: 'Copy',
         paste: 'Paste',
         selectAll: 'Select All',
-        view: 'View',
-        reload: 'Reload',
-        forceReload: 'Force Reload',
-        toggleDevTools: 'Toggle Developer Tools',
-        resetZoom: 'Actual Size',
-        zoomIn: 'Zoom In',
-        zoomOut: 'Zoom Out',
-        toggleFullScreen: 'Toggle Full Screen',
-        window: 'Window',
-        minimize: 'Minimize',
-        zoom: 'Zoom',
         help: 'Help',
-        about: 'About YouTube Backup Desktop'
+        openRepository: 'Open GitHub Repository',
+        openReleases: 'View Latest Releases',
+        version: `Version ${version}`
       };
 
   return Menu.buildFromTemplate([
@@ -88,31 +73,22 @@ function buildLocalizedMenu(language) {
       ]
     },
     {
-      label: labels.view,
-      submenu: [
-        { label: labels.reload, role: 'reload' },
-        { label: labels.forceReload, role: 'forceReload' },
-        { label: labels.toggleDevTools, role: 'toggleDevTools' },
-        { type: 'separator' },
-        { label: labels.resetZoom, role: 'resetZoom' },
-        { label: labels.zoomIn, role: 'zoomIn' },
-        { label: labels.zoomOut, role: 'zoomOut' },
-        { type: 'separator' },
-        { label: labels.toggleFullScreen, role: 'togglefullscreen' }
-      ]
-    },
-    {
-      label: labels.window,
-      submenu: [
-        { label: labels.minimize, role: 'minimize' },
-        { label: labels.zoom, role: 'zoom' },
-        { label: labels.close, role: 'close' }
-      ]
-    },
-    {
       label: labels.help,
       submenu: [
-        { label: labels.about, role: 'about' }
+        {
+          label: labels.openRepository,
+          click: () => {
+            void shell.openExternal(repositoryUrl);
+          }
+        },
+        {
+          label: labels.openReleases,
+          click: () => {
+            void shell.openExternal(releasesUrl);
+          }
+        },
+        { type: 'separator' },
+        { label: labels.version, enabled: false }
       ]
     }
   ]);
@@ -202,6 +178,18 @@ function scheduleWindowStatePersist() {
   }, 250);
 }
 
+function resolveWindowBackgroundColor(themeMode) {
+  if (themeMode === 'light') {
+    return '#f4efe7';
+  }
+
+  if (themeMode === 'dark') {
+    return '#2e2b27';
+  }
+
+  return nativeTheme.shouldUseDarkColors ? '#2e2b27' : '#f4efe7';
+}
+
 function createWindow() {
   const restoredBounds = getSafeWindowBounds(currentSettings?.windowBounds);
   mainWindow = new BrowserWindow({
@@ -211,7 +199,7 @@ function createWindow() {
     y: restoredBounds?.y,
     minWidth: 1040,
     minHeight: 760,
-    backgroundColor: '#f4efe7',
+    backgroundColor: resolveWindowBackgroundColor(currentSettings?.themeMode),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

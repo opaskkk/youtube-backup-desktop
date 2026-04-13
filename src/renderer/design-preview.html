@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YouTube Backup Desktop Design Preview</title>
+    <link rel="stylesheet" href="./design-preview.css" />
+  </head>
+  <body>
+    <div class="preview-shell">
+      <div class="preview-stage">
+        <header class="window-chrome">
+          <div class="window-brand">
+            <span class="app-icon" aria-hidden="true"></span>
+            <strong>유튜브 백업</strong>
+          </div>
+
+          <div class="window-controls" aria-hidden="true">
+            <span class="window-control">─</span>
+            <span class="window-control">□</span>
+            <span class="window-control is-close">×</span>
+          </div>
+        </header>
+
+        <header class="preview-topbar">
+          <nav class="preview-menu" aria-label="미리보기 장식 메뉴">
+            <span>파일</span>
+            <span>편집</span>
+            <span>보기</span>
+            <span>도움말</span>
+          </nav>
+        </header>
+
+        <main class="app-frame">
+          <aside class="sidebar">
+            <div class="sidebar-group">
+              <p class="group-label">작업</p>
+              <button class="sidebar-item is-active" type="button">
+                <span class="item-icon">+</span>
+                <span>새 백업</span>
+              </button>
+              <button class="sidebar-item" type="button">
+                <span class="item-icon">↓</span>
+                <span>대기열</span>
+                <span class="item-badge">3</span>
+              </button>
+              <button class="sidebar-item" type="button">
+                <span class="item-icon">□</span>
+                <span>완료됨</span>
+              </button>
+              <button class="sidebar-item" type="button">
+                <span class="item-icon">!</span>
+                <span>실패</span>
+              </button>
+            </div>
+
+            <div class="sidebar-group">
+              <p class="group-label">설정</p>
+              <button class="sidebar-item" type="button">
+                <span class="item-icon">⚙</span>
+                <span>환경설정</span>
+              </button>
+            </div>
+          </aside>
+
+          <section class="workspace">
+            <header class="workspace-header">
+              <div>
+                <p class="section-kicker">새 백업</p>
+                <h1>새 백업</h1>
+                <p class="workspace-subtitle">유튜브 영상을 최고 품질로 로컬에 저장합니다.</p>
+              </div>
+
+              <div class="header-actions">
+                <div class="theme-picker" role="tablist" aria-label="테마 선택">
+                  <button class="theme-button" type="button" data-theme-mode="light">일반</button>
+                  <button class="theme-button" type="button" data-theme-mode="dark">다크</button>
+                  <button class="theme-button is-active" type="button" data-theme-mode="system">시스템</button>
+                </div>
+
+                <button class="language-button" type="button">한국어 ▾</button>
+                <button class="help-button" type="button">?</button>
+              </div>
+            </header>
+
+            <section class="composer">
+              <div class="composer-row primary-row">
+                <label class="field field-url">
+                  <span>영상 URL</span>
+                  <div class="mock-input emphasis">https://www.youtube.com/watch?v=...</div>
+                </label>
+                <button class="cta-button" type="button">백업 추가</button>
+              </div>
+
+              <div class="composer-row secondary-row">
+                <label class="field">
+                  <span>저장 파일명 (선택)</span>
+                  <div class="mock-input subtle">원본 제목 사용</div>
+                </label>
+
+                <label class="field field-folder">
+                  <span>저장 폴더</span>
+                  <div class="folder-stack">
+                    <div class="mock-input">F:\브이로그채널옮기기작업</div>
+                    <button class="secondary-button" type="button">찾기</button>
+                  </div>
+                </label>
+              </div>
+
+              <div class="option-bar">
+                <span class="option-label">옵션</span>
+                <span class="chip is-active">최고 품질</span>
+                <span class="chip is-active">MP4</span>
+                <span class="chip is-active">자막 포함</span>
+                <span class="chip is-muted">+ 썸네일</span>
+              </div>
+            </section>
+
+            <section class="queue-panel">
+              <header class="queue-header">
+                <h2>대기열</h2>
+                <p>3개 작업 / 1개 진행 중</p>
+              </header>
+
+              <div class="queue-list">
+                <article class="queue-card is-featured">
+                  <div class="queue-thumb" aria-hidden="true"></div>
+                  <div class="queue-body">
+                    <div class="queue-title-row">
+                      <strong>광화문에서 여의도까지 자전거 라이딩 4K</strong>
+                      <div class="queue-progress-meta">
+                        <span>64%</span>
+                        <span>18MB/s</span>
+                      </div>
+                    </div>
+                    <div class="progress-track">
+                      <span style="width: 64%"></span>
+                    </div>
+                  </div>
+                  <button class="icon-button" type="button">Ⅱ</button>
+                </article>
+
+                <article class="queue-card">
+                  <div class="queue-thumb small" aria-hidden="true"></div>
+                  <div class="queue-body">
+                    <strong>시니어를 위한 스마트폰 보이스피싱 구별법</strong>
+                    <p>대기 중 / MP4 / 1080p</p>
+                  </div>
+                  <button class="icon-button quiet" type="button">×</button>
+                </article>
+
+                <article class="queue-card">
+                  <div class="queue-thumb small" aria-hidden="true"></div>
+                  <div class="queue-body">
+                    <strong>한강 러닝 페이스 메이커 5분컷</strong>
+                    <p>대기 중 / MP4 / 최고 품질</p>
+                  </div>
+                  <button class="icon-button quiet" type="button">×</button>
+                </article>
+              </div>
+            </section>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <script src="./design-preview.js"></script>
+  </body>
+</html>

@@ -7,6 +7,7 @@ const {
   loadSettings,
   normalizeEncodingMode,
   normalizeLanguage,
+  normalizeThemeMode,
   normalizeWindowBounds,
   resolveDefaultSettings,
   saveSettingsSync
@@ -45,6 +46,13 @@ test('normalizeEncodingMode keeps supported modes and falls back to gpu_fast', (
   assert.equal(normalizeEncodingMode('weird'), 'gpu_fast');
 });
 
+test('normalizeThemeMode keeps supported modes and falls back to system', () => {
+  assert.equal(normalizeThemeMode('light'), 'light');
+  assert.equal(normalizeThemeMode('dark'), 'dark');
+  assert.equal(normalizeThemeMode('system'), 'system');
+  assert.equal(normalizeThemeMode('weird'), 'system');
+});
+
 test('normalizeWindowBounds keeps valid window bounds and rejects invalid values', () => {
   assert.deepEqual(
     normalizeWindowBounds({ x: 12.2, y: 34.8, width: 1280, height: 860, isMaximized: true }),
@@ -63,6 +71,7 @@ test('resolveDefaultSettings prefers Korean when the app locale is Korean', () =
 
   assert.equal(resolveDefaultSettings(app).language, 'ko');
   assert.equal(resolveDefaultSettings(app).encodingMode, 'gpu_fast');
+  assert.equal(resolveDefaultSettings(app).themeMode, 'system');
 });
 
 test('resolveDefaultSettings falls back to English for non-Korean locales', () => {
@@ -74,6 +83,7 @@ test('resolveDefaultSettings falls back to English for non-Korean locales', () =
 
   assert.equal(resolveDefaultSettings(app).language, 'en');
   assert.equal(resolveDefaultSettings(app).encodingMode, 'gpu_fast');
+  assert.equal(resolveDefaultSettings(app).themeMode, 'system');
 });
 
 test('loadSettings migrates legacy advanced output settings once', async () => {
@@ -94,6 +104,7 @@ test('loadSettings migrates legacy advanced output settings once', async () => {
   assert.equal(settings.writeMetadata, false);
   assert.equal(settings.writeThumbnail, false);
   assert.equal(settings.writeSubs, false);
+  assert.equal(settings.themeMode, 'system');
   assert.equal(settings.didResetAdvancedOutputDefaults, true);
   assert.equal(persisted.didResetAdvancedOutputDefaults, true);
 });
@@ -104,6 +115,7 @@ test('loadSettings keeps user choices after the migration marker is present', as
 
   await fs.writeFile(settingsPath, JSON.stringify({
     language: 'en',
+    themeMode: 'dark',
     didResetAdvancedOutputDefaults: true,
     allowMkvFallback: true,
     writeMetadata: true,
@@ -116,6 +128,7 @@ test('loadSettings keeps user choices after the migration marker is present', as
   assert.equal(settings.writeMetadata, true);
   assert.equal(settings.writeThumbnail, false);
   assert.equal(settings.writeSubs, true);
+  assert.equal(settings.themeMode, 'dark');
 });
 
 test('loadSettings falls back to gpu_fast when encodingMode is missing or invalid', async () => {
@@ -133,6 +146,21 @@ test('loadSettings falls back to gpu_fast when encodingMode is missing or invali
   assert.equal(settings.encodingMode, 'gpu_fast');
 });
 
+test('loadSettings falls back to system when themeMode is missing or invalid', async () => {
+  const app = await createTempApp('en-US');
+  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+
+  await fs.writeFile(settingsPath, JSON.stringify({
+    language: 'en',
+    didResetAdvancedOutputDefaults: true,
+    themeMode: 'invalid-theme'
+  }, null, 2), 'utf8');
+
+  const settings = await loadSettings(app);
+
+  assert.equal(settings.themeMode, 'system');
+});
+
 test('loadSettings restores valid window bounds from settings', async () => {
   const app = await createTempApp('en-US');
   const settingsPath = path.join(app.getPath('userData'), 'settings.json');
@@ -147,12 +175,13 @@ test('loadSettings restores valid window bounds from settings', async () => {
   assert.deepEqual(settings.windowBounds, { x: 100, y: 120, width: 1280, height: 860, isMaximized: false });
 });
 
-test('saveSettingsSync writes non-empty settings with window bounds', async () => {
+test('saveSettingsSync writes non-empty settings with window bounds and theme mode', async () => {
   const app = await createTempApp('en-US');
   const settingsPath = path.join(app.getPath('userData'), 'settings.json');
 
   const saved = saveSettingsSync(app, {
     language: 'en',
+    themeMode: 'light',
     windowBounds: { x: 320, y: 180, width: 1400, height: 900, isMaximized: true }
   });
 
@@ -163,4 +192,5 @@ test('saveSettingsSync writes non-empty settings with window bounds', async () =
   assert.deepEqual(saved.windowBounds, { x: 320, y: 180, width: 1400, height: 900, isMaximized: true });
   assert.deepEqual(persisted.windowBounds, { x: 320, y: 180, width: 1400, height: 900, isMaximized: true });
   assert.equal(persisted.language, 'en');
+  assert.equal(persisted.themeMode, 'light');
 });

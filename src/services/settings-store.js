@@ -3,6 +3,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 
 const SUPPORTED_ENCODING_MODES = ['cpu_quality', 'gpu_fast', 'gpu_quality'];
+const SUPPORTED_THEME_MODES = ['light', 'dark', 'system'];
 
 const BASE_DEFAULT_SETTINGS = {
   outputDir: '',
@@ -13,6 +14,7 @@ const BASE_DEFAULT_SETTINGS = {
   writeThumbnail: false,
   writeSubs: false,
   language: 'en',
+  themeMode: 'system',
   windowBounds: null,
   didResetAdvancedOutputDefaults: true
 };
@@ -23,6 +25,10 @@ function normalizeLanguage(language) {
 
 function normalizeEncodingMode(encodingMode) {
   return SUPPORTED_ENCODING_MODES.includes(encodingMode) ? encodingMode : 'gpu_fast';
+}
+
+function normalizeThemeMode(themeMode) {
+  return SUPPORTED_THEME_MODES.includes(themeMode) ? themeMode : 'system';
 }
 
 function normalizeWindowBounds(windowBounds) {
@@ -55,6 +61,7 @@ function normalizeWindowBounds(windowBounds) {
 
 function resolveDefaultSettings(app) {
   const locale = String(app?.getLocale?.() || '').toLowerCase();
+
   return {
     ...BASE_DEFAULT_SETTINGS,
     language: locale.startsWith('ko') ? 'ko' : 'en'
@@ -85,6 +92,7 @@ function buildNextSettings(app, storedSettings, settings) {
   const nextSettings = { ...resolveDefaultSettings(app), ...storedSettings, ...settings };
   nextSettings.language = normalizeLanguage(nextSettings.language);
   nextSettings.encodingMode = normalizeEncodingMode(nextSettings.encodingMode);
+  nextSettings.themeMode = normalizeThemeMode(nextSettings.themeMode);
   nextSettings.windowBounds = normalizeWindowBounds(nextSettings.windowBounds);
   nextSettings.didResetAdvancedOutputDefaults = true;
   return nextSettings;
@@ -113,6 +121,7 @@ async function loadSettings(app) {
     const parsed = { ...defaultSettings, ...storedSettings };
     parsed.language = normalizeLanguage(parsed.language);
     parsed.encodingMode = normalizeEncodingMode(parsed.encodingMode);
+    parsed.themeMode = normalizeThemeMode(parsed.themeMode);
     parsed.windowBounds = normalizeWindowBounds(parsed.windowBounds);
     parsed.didResetAdvancedOutputDefaults = storedSettings.didResetAdvancedOutputDefaults === true;
 
@@ -169,9 +178,11 @@ function saveSettingsSync(app, settings) {
 module.exports = {
   DEFAULT_SETTINGS: BASE_DEFAULT_SETTINGS,
   SUPPORTED_ENCODING_MODES,
+  SUPPORTED_THEME_MODES,
   loadSettings,
   normalizeEncodingMode,
   normalizeLanguage,
+  normalizeThemeMode,
   normalizeWindowBounds,
   resolveDefaultSettings,
   saveSettings,
