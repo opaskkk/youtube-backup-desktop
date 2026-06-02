@@ -3,7 +3,10 @@ const assert = require('node:assert/strict');
 const {
   AUTH_STRATEGIES,
   buildAuthArgs,
-  buildDownloadResult
+  buildDownloadResult,
+  filterRelatedOutputFiles,
+  isArchiveSkipLine,
+  resolveFinalCandidate
 } = require('../src/services/yt-dlp-runner');
 
 test('yt-dlp-runner keeps the expected auth strategy order and browser args', () => {
@@ -46,6 +49,46 @@ test('buildDownloadResult collects sidecar paths and warnings from the attempt o
   assert.deepEqual(result.warnings, []);
 });
 
+test('buildDownloadResult ignores unrelated sidecar files in a reused output folder', () => {
+  const result = buildDownloadResult(
+    {
+      url: 'https://www.youtube.com/watch?v=test123',
+      customTitle: 'current video',
+      writeMetadata: true,
+      writeThumbnail: true,
+      writeSubs: true
+    },
+    {
+      bestResolution: '1920x1080',
+      info: {
+        id: 'test123',
+        title: 'Original Title',
+        width: 1920,
+        height: 1080
+      }
+    },
+    'F:\\videos',
+    {
+      finalCandidate: 'F:\\videos\\current video.mp4',
+      container: 'mp4',
+      files: [
+        'current video.mp4',
+        'current video.info.json',
+        'old video.info.json',
+        'old video.en.srt',
+        'old video.webp'
+      ],
+      transcodeEncoder: '',
+      transcodeDurationMs: 0,
+      wasTranscodedToMp4: false
+    }
+  );
+
+  assert.equal(result.metadataPath, 'F:\\videos\\current video.info.json');
+  assert.deepEqual(result.subtitlePaths, []);
+  assert.equal(result.thumbnailPath, null);
+});
+
 test('buildDownloadResult reports missing requested sidecar files and transcoding fallback', () => {
   const result = buildDownloadResult(
     {
@@ -79,4 +122,38 @@ test('buildDownloadResult reports missing requested sidecar files and transcodin
   assert.match(result.warnings[2], /thumbnail/i);
   assert.match(result.warnings[3], /subtitles/i);
   assert.equal(result.resolution, '1280x720');
+});
+
+test('resolveFinalCandidate ignores media files that existed before the current attempt', () => {
+  assert.equal(
+    resolveFinalCandidate('', 'F:\\videos', ['old.mkv', 'current.mp4'], {
+      previousFiles: new Set(['old.mkv']),
+      outputStem: 'current'
+    }),
+    'F:\\videos\\current.mp4'
+  );
+
+  assert.equal(
+    resolveFinalCandidate('', 'F:\\videos', ['old.mkv'], {
+      previousFiles: new Set(['old.mkv'])
+    }),
+    ''
+  );
+});
+
+test('filterRelatedOutputFiles keeps only files matching the output stem', () => {
+  assert.deepEqual(
+    filterRelatedOutputFiles(
+      ['clip.mp4', 'clip.info.json', 'other.info.json', 'clip.en.srt'],
+      { title: 'clip' },
+      '',
+      ''
+    ),
+    ['clip.mp4', 'clip.info.json', 'clip.en.srt']
+  );
+});
+
+test('isArchiveSkipLine recognizes yt-dlp download archive skips', () => {
+  assert.equal(isArchiveSkipLine('[download] test123 has already been recorded in the archive'), true);
+  assert.equal(isArchiveSkipLine('[download] Destination: clip.mp4'), false);
 });

@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { DownloadManager, terminateProcessTree } = require('../src/services/download-manager');
+const { DownloadManager, isSupportedYouTubeUrl, terminateProcessTree } = require('../src/services/download-manager');
 
 function createMockApp() {
   return {
@@ -85,6 +85,21 @@ test('enqueue rejects non-http URLs', async () => {
     () => manager.enqueue({ url: 'ftp://example.com/video', outputDir: 'C:\\videos' }),
     /valid YouTube URL/i
   );
+});
+
+test('enqueue rejects non-YouTube URLs', async () => {
+  const { manager } = createManager();
+  await assert.rejects(
+    () => manager.enqueue({ url: 'https://example.com/video', outputDir: 'C:\\videos' }),
+    /valid YouTube URL/i
+  );
+});
+
+test('isSupportedYouTubeUrl accepts supported YouTube hosts only', () => {
+  assert.equal(isSupportedYouTubeUrl('https://www.youtube.com/watch?v=test123'), true);
+  assert.equal(isSupportedYouTubeUrl('https://youtu.be/test123'), true);
+  assert.equal(isSupportedYouTubeUrl('https://www.youtube-nocookie.com/embed/test123'), true);
+  assert.equal(isSupportedYouTubeUrl('https://example.com/watch?v=test123'), false);
 });
 
 test('getSnapshot returns a deep copy of jobs', async () => {
@@ -403,11 +418,49 @@ test('default job settings use expected values', async () => {
   const job = manager.getSnapshot()[0];
   assert.equal(job.allowMkvFallback, true);
   assert.equal(job.encodingMode, 'gpu_fast');
-  assert.equal(job.writeMetadata, true);
-  assert.equal(job.writeThumbnail, true);
-  assert.equal(job.writeSubs, true);
+  assert.equal(job.writeMetadata, false);
+  assert.equal(job.writeThumbnail, false);
+  assert.equal(job.writeSubs, false);
   assert.equal(job.status, 'inspecting');
   assert.equal(job.progress.phase, 'inspecting');
+});
+
+test('completed duplicate archive job logs a skip instead of a saved file', async () => {
+  const { manager } = createManager();
+  manager.ytDlp = {
+    inspect: async () => ({
+      title: 'Test',
+      videoId: 'test123',
+      bestResolution: '1920x1080',
+      isPrivate: false,
+      resolvedAuthStrategy: 'none',
+      info: { id: 'test123', title: 'Test', formats: [] }
+    }),
+    download: async () => ({
+      videoId: 'test123',
+      title: 'Test',
+      finalPath: '',
+      container: '',
+      resolution: '1920x1080',
+      subtitlePaths: [],
+      metadataPath: null,
+      thumbnailPath: null,
+      warnings: ['This video is already in the download archive, so no new files were created.'],
+      transcodeEncoder: '',
+      transcodeDurationMs: 0,
+      wasTranscodedToMp4: false,
+      skippedDuplicate: true,
+      targetDirectory: 'C:\\videos'
+    })
+  };
+
+  await manager.enqueue(validPayload());
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  const job = manager.getSnapshot()[0];
+  assert.equal(job.status, 'completed');
+  assert.equal(job.result.skippedDuplicate, true);
+  assert.match(job.logs.at(-1), /already in the archive/i);
 });
 
 test('custom title is preserved through enqueue', async () => {

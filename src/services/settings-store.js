@@ -73,7 +73,7 @@ function getSettingsPath(app) {
 }
 
 function getTempSettingsPath(settingsPath) {
-  return `${settingsPath}.tmp`;
+  return `${settingsPath}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}.tmp`;
 }
 
 async function readStoredSettings(app) {

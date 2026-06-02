@@ -1,4 +1,5 @@
 const path = require('node:path');
+const fs = require('node:fs/promises');
 const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, screen, shell } = require('electron');
 const { DownloadManager } = require('./services/download-manager');
 const { ensureBundledBinaries } = require('./services/binary-manager');
@@ -9,6 +10,7 @@ let downloadManager = null;
 let isQuitting = false;
 let currentSettings = null;
 let windowStateSaveTimer = null;
+let settingsSaveQueue = Promise.resolve();
 
 function getFolderDialogTitle(language) {
   return normalizeLanguage(language) === 'ko' ? '백업 폴더 선택' : 'Choose backup folder';
@@ -149,7 +151,7 @@ async function persistWindowState() {
     return;
   }
 
-  const nextSettings = await saveSettings(app, {
+  const nextSettings = await saveSettingsQueued({
     ...currentSettings,
     windowBounds
   });
@@ -176,6 +178,19 @@ function scheduleWindowStatePersist() {
     windowStateSaveTimer = null;
     void persistWindowState();
   }, 250);
+}
+
+function saveSettingsQueued(settings) {
+  const saveOperation = settingsSaveQueue
+    .catch(() => {})
+    .then(async () => {
+      const nextSettings = await saveSettings(app, settings);
+      currentSettings = nextSettings;
+      return nextSettings;
+    });
+
+  settingsSaveQueue = saveOperation;
+  return saveOperation;
 }
 
 function resolveWindowBackgroundColor(themeMode) {
@@ -269,8 +284,17 @@ async function bootstrap() {
   });
 
   ipcMain.handle('dialog:open-dir', async (_event, directoryPath) => {
-    if (!directoryPath || typeof directoryPath !== 'string') {
+    if (!directoryPath || typeof directoryPath !== 'string' || !path.isAbsolute(directoryPath)) {
       return { ok: false, message: 'No folder selected.' };
+    }
+
+    try {
+      const stats = await fs.stat(directoryPath);
+      if (!stats.isDirectory()) {
+        return { ok: false, message: 'The selected path is not a folder.' };
+      }
+    } catch {
+      return { ok: false, message: 'The selected folder does not exist.' };
     }
 
     const errorMessage = await shell.openPath(directoryPath);
@@ -292,8 +316,7 @@ async function bootstrap() {
   });
 
   ipcMain.handle('settings:save', async (_event, settings) => {
-    const saved = await saveSettings(app, settings);
-    currentSettings = saved;
+    const saved = await saveSettingsQueued(settings);
     applyApplicationMenu(saved.language);
     return saved;
   });

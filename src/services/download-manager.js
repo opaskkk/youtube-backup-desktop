@@ -63,9 +63,9 @@ class DownloadManager {
       preferContainer: 'mp4',
       allowMkvFallback: payload.allowMkvFallback !== false,
       encodingMode: payload.encodingMode || 'gpu_fast',
-      writeMetadata: payload.writeMetadata !== false,
-      writeThumbnail: payload.writeThumbnail !== false,
-      writeSubs: payload.writeSubs !== false,
+      writeMetadata: payload.writeMetadata === true,
+      writeThumbnail: payload.writeThumbnail === true,
+      writeSubs: payload.writeSubs === true,
       status: 'queued',
       title: String(payload.customTitle || '').trim() || payload.url,
       logs: ['Queued backup job.'],
@@ -179,11 +179,15 @@ class DownloadManager {
       nextJob.status = 'completed';
       nextJob.error = null;
       nextJob.progress = { phase: 'completed', percent: 100, speed: '', eta: '' };
-      nextJob.logs.push(
-        result.wasTranscodedToMp4
-          ? `Saved MP4 backup to ${result.finalPath || result.targetDirectory}.`
-          : `Saved backup to ${result.finalPath || result.targetDirectory}.`
-      );
+      if (result.skippedDuplicate) {
+        nextJob.logs.push('Skipped download because this video is already in the archive.');
+      } else {
+        nextJob.logs.push(
+          result.wasTranscodedToMp4
+            ? `Saved MP4 backup to ${result.finalPath || result.targetDirectory}.`
+            : `Saved backup to ${result.finalPath || result.targetDirectory}.`
+        );
+      }
       if (result.wasTranscodedToMp4 && result.transcodeDurationMs > 0) {
         nextJob.logs.push(`MP4 re-encoding finished in ${formatDuration(result.transcodeDurationMs, 'milliseconds')}.`);
       }
@@ -321,7 +325,7 @@ function validatePayload(payload) {
     throw new Error('Missing backup job payload.');
   }
 
-  if (!payload.url || !/^https?:\/\//i.test(payload.url)) {
+  if (!isSupportedYouTubeUrl(payload.url)) {
     throw new Error('Enter a valid YouTube URL.');
   }
 
@@ -330,8 +334,27 @@ function validatePayload(payload) {
   }
 }
 
+function isSupportedYouTubeUrl(value) {
+  try {
+    const url = new URL(String(value || '').trim());
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return false;
+    }
+
+    const hostname = url.hostname.toLowerCase().replace(/^www\./, '');
+    return hostname === 'youtube.com'
+      || hostname.endsWith('.youtube.com')
+      || hostname === 'youtu.be'
+      || hostname === 'youtube-nocookie.com'
+      || hostname.endsWith('.youtube-nocookie.com');
+  } catch {
+    return false;
+  }
+}
+
 module.exports = {
   DownloadManager,
   attachActiveProcess,
+  isSupportedYouTubeUrl,
   terminateProcessTree
 };

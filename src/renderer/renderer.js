@@ -740,12 +740,10 @@ function bindDirectoryActions() {
 }
 
 function bindSettingsControls() {
-  ['change', 'input'].forEach((eventName) => {
-    els.allowMkvFallback.addEventListener(eventName, persistSettings);
-    els.writeMetadata.addEventListener(eventName, persistSettings);
-    els.writeThumbnail.addEventListener(eventName, persistSettings);
-    els.writeSubs.addEventListener(eventName, persistSettings);
-  });
+  els.allowMkvFallback.addEventListener('change', persistSettings);
+  els.writeMetadata.addEventListener('change', persistSettings);
+  els.writeThumbnail.addEventListener('change', persistSettings);
+  els.writeSubs.addEventListener('change', persistSettings);
 
   els.encodingMode.addEventListener('change', async () => {
     updateEncodingHelp();

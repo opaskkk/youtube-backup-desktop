@@ -95,6 +95,10 @@ function createYtDlpRunner(app) {
       archivePath: config.archivePath
     });
 
+    if (directAttempt.skippedDuplicate) {
+      return buildSkippedDuplicateResult(config, inspectResult, targetDirectory);
+    }
+
     if (directAttempt.finalCandidate) {
       return buildDownloadResult(config, inspectResult, targetDirectory, directAttempt);
     }
@@ -148,6 +152,7 @@ function createYtDlpRunner(app) {
       finalCandidate: transcoded.outputPath,
       container: 'mp4',
       files: finalFiles,
+      relatedFiles: filterRelatedOutputFiles(finalFiles, inspectResult.info, config.customTitle, transcoded.outputPath),
       transcodeEncoder: transcoded.encoder,
       transcodeDurationMs: transcoded.durationMs,
       wasTranscodedToMp4: true
@@ -208,6 +213,8 @@ async function runYtDlpDownloadAttempt({
   mergeOutputFormat,
   archivePath
 }) {
+  const filesBefore = await readDirectoryFileNames(targetDirectory);
+  const outputStem = resolveOutputStem(inspectResult.info, config.customTitle);
   const args = [
     ...buildBaseArgs(inspectResult.resolvedAuthStrategy || 'none'),
     '--newline',
@@ -262,21 +269,22 @@ async function runYtDlpDownloadAttempt({
   let stderrBuffer = '';
   let finalPath = '';
   let container = '';
+  let skippedDuplicate = false;
+
+  const handleStructuredValue = (value) => {
+    finalPath = value.finalPath || finalPath;
+    container = value.container || container;
+    skippedDuplicate = skippedDuplicate || isArchiveSkipLine(value.raw);
+  };
 
   child.stdout.on('data', (chunk) => {
-    stdoutBuffer = consumeOutput(chunk.toString(), stdoutBuffer, handlers, (value) => {
-      finalPath = value.finalPath || finalPath;
-      container = value.container || container;
-    });
+    stdoutBuffer = consumeOutput(chunk.toString(), stdoutBuffer, handlers, handleStructuredValue);
   });
 
   child.stderr.on('data', (chunk) => {
     const text = chunk.toString();
     stderr += text;
-    stderrBuffer = consumeOutput(text, stderrBuffer, handlers, (value) => {
-      finalPath = value.finalPath || finalPath;
-      container = value.container || container;
-    });
+    stderrBuffer = consumeOutput(text, stderrBuffer, handlers, handleStructuredValue);
   });
 
   const exitCode = await new Promise((resolve, reject) => {
@@ -284,28 +292,53 @@ async function runYtDlpDownloadAttempt({
     child.on('close', resolve);
   });
 
+  if (stdoutBuffer) {
+    stdoutBuffer = consumeOutput('\n', stdoutBuffer, handlers, handleStructuredValue);
+  }
+
+  if (stderrBuffer) {
+    stderrBuffer = consumeOutput('\n', stderrBuffer, handlers, handleStructuredValue);
+  }
+
   if (exitCode !== 0) {
     throw createYtDlpProcessError(stderr, 'The app could not download this link.');
   }
 
   const files = await fs.readdir(targetDirectory);
+  const newFiles = files.filter((file) => !filesBefore.has(file));
+  const relatedFiles = filterRelatedOutputFiles(files, inspectResult.info, config.customTitle, finalPath, newFiles);
+  const finalCandidate = resolveFinalCandidate(finalPath, targetDirectory, relatedFiles, {
+    previousFiles: filesBefore,
+    outputStem
+  });
+
   return {
     files,
-    finalCandidate: resolveFinalCandidate(finalPath, targetDirectory, files),
+    newFiles,
+    relatedFiles,
+    finalCandidate,
     container: container || '',
+    skippedDuplicate: skippedDuplicate && !finalCandidate && newFiles.length === 0,
     wasTranscodedToMp4: false
   };
 }
 
 function buildDownloadResult(config, inspectResult, targetDirectory, attempt) {
   const finalExt = attempt.container || path.extname(attempt.finalCandidate).replace('.', '') || 'unknown';
-  const subtitlePaths = attempt.files
+  const relatedFiles = attempt.relatedFiles || filterRelatedOutputFiles(
+    attempt.files,
+    inspectResult.info,
+    config.customTitle,
+    attempt.finalCandidate,
+    attempt.newFiles
+  );
+  const subtitlePaths = relatedFiles
     .filter((file) => SUBTITLE_EXTENSIONS.includes(path.extname(file).toLowerCase()))
     .map((file) => path.join(targetDirectory, file));
-  const metadataPath = attempt.files
+  const metadataPath = relatedFiles
     .filter((file) => file.endsWith('.info.json'))
     .map((file) => path.join(targetDirectory, file))[0] || null;
-  const thumbnailPath = attempt.files
+  const thumbnailPath = relatedFiles
     .filter((file) => THUMBNAIL_EXTENSIONS.includes(path.extname(file).toLowerCase()))
     .map((file) => path.join(targetDirectory, file))
     .find((filePath) => !filePath.endsWith('.part')) || null;
@@ -323,6 +356,7 @@ function buildDownloadResult(config, inspectResult, targetDirectory, attempt) {
     transcodeEncoder: attempt.transcodeEncoder || '',
     transcodeDurationMs: attempt.transcodeDurationMs || 0,
     wasTranscodedToMp4: Boolean(attempt.wasTranscodedToMp4),
+    skippedDuplicate: Boolean(attempt.skippedDuplicate),
     targetDirectory
   };
   result.warnings = collectWarnings(result, {
@@ -333,6 +367,25 @@ function buildDownloadResult(config, inspectResult, targetDirectory, attempt) {
   return result;
 }
 
+function buildSkippedDuplicateResult(config, inspectResult, targetDirectory) {
+  return {
+    videoId: inspectResult.info.id || '',
+    title: inspectResult.info.title || config.url,
+    finalPath: '',
+    container: '',
+    resolution: inspectResult.bestResolution || formatResolution(inspectResult.info.width, inspectResult.info.height),
+    subtitlePaths: [],
+    metadataPath: null,
+    thumbnailPath: null,
+    warnings: ['This video is already in the download archive, so no new files were created.'],
+    transcodeEncoder: '',
+    transcodeDurationMs: 0,
+    wasTranscodedToMp4: false,
+    skippedDuplicate: true,
+    targetDirectory
+  };
+}
+
 function buildAuthArgs(authStrategy) {
   if (!authStrategy || authStrategy === 'none') {
     return [];
@@ -341,13 +394,57 @@ function buildAuthArgs(authStrategy) {
   return ['--cookies-from-browser', authStrategy];
 }
 
-function resolveFinalCandidate(finalPath, targetDirectory, files = []) {
+function resolveFinalCandidate(finalPath, targetDirectory, files = [], options = {}) {
   if (finalPath) {
     return finalPath;
   }
 
-  const mediaFile = files.find((file) => MEDIA_EXTENSIONS.includes(path.extname(file).toLowerCase()));
+  const previousFiles = options.previousFiles || new Set();
+  const outputStem = options.outputStem || '';
+  const mediaFile = files.find((file) => {
+    if (!MEDIA_EXTENSIONS.includes(path.extname(file).toLowerCase())) {
+      return false;
+    }
+
+    if (previousFiles.has(file)) {
+      return false;
+    }
+
+    if (outputStem && path.parse(file).name !== outputStem) {
+      return false;
+    }
+
+    return true;
+  });
   return mediaFile ? path.join(targetDirectory, mediaFile) : '';
+}
+
+async function readDirectoryFileNames(directoryPath) {
+  try {
+    const files = await fs.readdir(directoryPath);
+    return new Set(files);
+  } catch {
+    return new Set();
+  }
+}
+
+function filterRelatedOutputFiles(files = [], info = {}, customTitle = '', finalPath = '', preferredFiles = null) {
+  const candidates = Array.isArray(preferredFiles) && preferredFiles.length > 0 ? preferredFiles : files;
+  const outputStem = resolveOutputStem(info, customTitle);
+  const finalBaseName = finalPath ? path.basename(finalPath, path.extname(finalPath)) : '';
+
+  return candidates.filter((file) => {
+    const parsed = path.parse(file);
+    if (parsed.name === outputStem || parsed.name.startsWith(`${outputStem}.`)) {
+      return true;
+    }
+
+    return Boolean(finalBaseName) && (parsed.name === finalBaseName || parsed.name.startsWith(`${finalBaseName}.`));
+  });
+}
+
+function isArchiveSkipLine(line) {
+  return /has already been recorded in the archive/i.test(String(line || ''));
 }
 
 function formatStrategyLabel(authStrategy) {
@@ -363,7 +460,9 @@ module.exports = {
   buildAuthArgs,
   buildDownloadResult,
   createYtDlpRunner,
+  filterRelatedOutputFiles,
   inspectWithStrategy,
+  isArchiveSkipLine,
   resolveFinalCandidate,
   runYtDlpDownloadAttempt
 };
