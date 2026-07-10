@@ -1,4 +1,4 @@
-const path = require('node:path');
+const path = require('node:path').win32;
 
 function sanitizeSegment(input, fallback = 'unknown') {
   const value = String(input || fallback)

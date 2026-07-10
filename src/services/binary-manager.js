@@ -1,5 +1,6 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const pinnedBinaries = require('../../scripts/pinned-binaries.json');
 
 function getVendorRoot(app) {
   return app.isPackaged
@@ -14,8 +15,16 @@ function getBinaryPaths(app) {
     vendorRoot,
     ytDlp: path.join(vendorRoot, 'yt-dlp.exe'),
     ffmpeg: path.join(vendorRoot, 'ffmpeg.exe'),
-    ffprobe: path.join(vendorRoot, 'ffprobe.exe')
+    ffprobe: path.join(vendorRoot, 'ffprobe.exe'),
+    manifest: path.join(vendorRoot, 'binary-manifest.json')
   };
+}
+
+function manifestMatchesPinnedVersions(manifest) {
+  return manifest?.ytDlp?.version === pinnedBinaries.ytDlp.version
+    && manifest?.ytDlp?.sha256 === pinnedBinaries.ytDlp.sha256
+    && manifest?.ffmpeg?.version === pinnedBinaries.ffmpeg.version
+    && manifest?.ffmpeg?.sha256 === pinnedBinaries.ffmpeg.sha256;
 }
 
 async function ensureBundledBinaries(app) {
@@ -23,7 +32,8 @@ async function ensureBundledBinaries(app) {
   const checks = await Promise.allSettled([
     fs.access(binaries.ytDlp),
     fs.access(binaries.ffmpeg),
-    fs.access(binaries.ffprobe)
+    fs.access(binaries.ffprobe),
+    fs.access(binaries.manifest)
   ]);
 
   const missing = [];
@@ -35,6 +45,18 @@ async function ensureBundledBinaries(app) {
   }
   if (checks[2].status === 'rejected') {
     missing.push('ffprobe.exe');
+  }
+  if (checks[3].status === 'rejected') {
+    missing.push('binary-manifest.json');
+  }
+
+  if (missing.length === 0) {
+    try {
+      const manifest = JSON.parse(await fs.readFile(binaries.manifest, 'utf8'));
+      if (!manifestMatchesPinnedVersions(manifest)) missing.push('current verified binary versions');
+    } catch {
+      missing.push('valid binary-manifest.json');
+    }
   }
 
   if (missing.length > 0) {
@@ -48,5 +70,6 @@ async function ensureBundledBinaries(app) {
 
 module.exports = {
   ensureBundledBinaries,
-  getBinaryPaths
+  getBinaryPaths,
+  manifestMatchesPinnedVersions
 };

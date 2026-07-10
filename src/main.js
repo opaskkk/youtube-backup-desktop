@@ -4,6 +4,7 @@ const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, screen, shell } 
 const { DownloadManager } = require('./services/download-manager');
 const { ensureBundledBinaries } = require('./services/binary-manager');
 const { loadSettings, normalizeLanguage, saveSettings, saveSettingsSync } = require('./services/settings-store');
+const pinnedBinaries = require('../scripts/pinned-binaries.json');
 
 let mainWindow = null;
 let downloadManager = null;
@@ -36,7 +37,8 @@ function buildLocalizedMenu(language) {
         help: '도움말',
         openRepository: 'GitHub 저장소 열기',
         openReleases: '최신 릴리스 보기',
-        version: `버전 ${version}`
+        version: `버전 ${version}`,
+        binaryVersions: `yt-dlp ${pinnedBinaries.ytDlp.version} · FFmpeg ${pinnedBinaries.ffmpeg.version}`
       }
     : {
         file: 'File',
@@ -51,7 +53,8 @@ function buildLocalizedMenu(language) {
         help: 'Help',
         openRepository: 'Open GitHub Repository',
         openReleases: 'View Latest Releases',
-        version: `Version ${version}`
+        version: `Version ${version}`,
+        binaryVersions: `yt-dlp ${pinnedBinaries.ytDlp.version} · FFmpeg ${pinnedBinaries.ffmpeg.version}`
       };
 
   return Menu.buildFromTemplate([
@@ -90,7 +93,8 @@ function buildLocalizedMenu(language) {
           }
         },
         { type: 'separator' },
-        { label: labels.version, enabled: false }
+        { label: labels.version, enabled: false },
+        { label: labels.binaryVersions, enabled: false }
       ]
     }
   ]);
