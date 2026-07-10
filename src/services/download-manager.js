@@ -307,16 +307,26 @@ function terminateProcessTree(childProcess) {
     return;
   }
 
-  try {
-    spawn('taskkill', ['/pid', String(childProcess.pid), '/t', '/f'], {
-      windowsHide: true
-    });
-  } catch {
+  const killDirectly = () => {
     try {
       childProcess.kill('SIGKILL');
     } catch {
       // Best effort cleanup.
     }
+  };
+
+  if (process.platform !== 'win32') {
+    killDirectly();
+    return;
+  }
+
+  try {
+    const killer = spawn('taskkill', ['/pid', String(childProcess.pid), '/t', '/f'], {
+      windowsHide: true
+    });
+    killer.once('error', killDirectly);
+  } catch {
+    killDirectly();
   }
 }
 
@@ -329,7 +339,7 @@ function validatePayload(payload) {
     throw new Error('Enter a valid YouTube URL.');
   }
 
-  if (!payload.outputDir || !path.isAbsolute(payload.outputDir)) {
+  if (!payload.outputDir || (!path.isAbsolute(payload.outputDir) && !path.win32.isAbsolute(payload.outputDir))) {
     throw new Error('Choose a valid output folder.');
   }
 }

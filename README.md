@@ -37,9 +37,9 @@ npm install
 npm start
 ```
 
-The app downloads Windows binaries for `yt-dlp` and `ffmpeg` into `vendor/win32/` during `npm install`.
+The app downloads pinned Windows binaries for `yt-dlp` and `ffmpeg` into `vendor/win32/` during `npm install`. Versions and SHA-256 checksums are kept in `scripts/pinned-binaries.json`; downloads are installed only after checksum verification. Verified tool versions appear in the Help menu.
 
-`npm install` 중에 Windows용 `yt-dlp`, `ffmpeg` 바이너리를 `vendor/win32/`로 내려받습니다.
+`npm install` 중에 고정된 Windows용 `yt-dlp`, `ffmpeg` 바이너리를 `vendor/win32/`로 내려받습니다. 버전과 SHA-256은 `scripts/pinned-binaries.json`에서 관리하며 검증을 통과한 파일만 설치합니다. 검증된 도구 버전은 도움말 메뉴에 표시됩니다.
 
 ## Commit Workflow / 커밋 워크플로
 

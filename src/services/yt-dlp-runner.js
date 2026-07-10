@@ -1,5 +1,5 @@
 const fs = require('node:fs/promises');
-const path = require('node:path');
+const path = require('node:path').win32;
 const { spawn } = require('node:child_process');
 const { getBinaryPaths } = require('./binary-manager');
 const {

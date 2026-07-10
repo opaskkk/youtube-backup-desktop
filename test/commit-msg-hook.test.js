@@ -13,7 +13,8 @@ function git(cwd, args) {
 }
 
 function runShell(cwd, command) {
-  return execFileSync('C:\\Program Files\\Git\\bin\\sh.exe', ['-lc', command], {
+  const shell = process.platform === 'win32' ? 'C:\\Program Files\\Git\\bin\\sh.exe' : '/bin/sh';
+  return execFileSync(shell, ['-lc', command], {
     cwd,
     encoding: 'utf8',
     env: {
@@ -51,7 +52,7 @@ test('commit-msg hook rewrites imperative english subjects into the auto-generat
   git(repoRoot, ['add', 'package.json']);
 
   fs.writeFileSync(messageFile, 'Add auto-generated commit hooks and supporting tests\n', 'utf8');
-  runShell(repoRoot, '".githooks/commit-msg" "COMMIT_EDITMSG"');
+  runShell(repoRoot, 'sh ".githooks/commit-msg" "COMMIT_EDITMSG"');
 
   const nextMessage = fs.readFileSync(messageFile, 'utf8');
   assert.match(nextMessage, /^작업: 설정\/빌드 업데이트 \(1건\)/);
@@ -80,7 +81,7 @@ test('commit-msg hook keeps manual conventional commit subjects unchanged', () =
   );
 
   fs.writeFileSync(messageFile, 'feat: preserve release commits\n', 'utf8');
-  runShell(repoRoot, 'if ".githooks/commit-msg" "COMMIT_EDITMSG"; then exit 0; else exit 1; fi');
+  runShell(repoRoot, 'if sh ".githooks/commit-msg" "COMMIT_EDITMSG"; then exit 0; else exit 1; fi');
 
   assert.equal(fs.readFileSync(messageFile, 'utf8'), 'feat: preserve release commits\n');
 });
